@@ -2,7 +2,7 @@ mod candle;
 mod position;
 
 #[cfg(test)]
-mod tests;
+mod bt;
 
 pub use candle::*;
 pub use position::*;
@@ -52,13 +52,23 @@ impl Backtest {
         self.positions.clone()
     }
 
+    pub fn find_event_by_position(&self, position: &Position) -> Option<&PositionEvent> {
+        self.position_history
+            .iter()
+            .find(|p| p.id() == position.id())
+    }
+
     pub fn position_history(&self) -> Vec<PositionEvent> {
         self.position_history.clone()
     }
 
     pub fn open_position(&mut self, position: Position) -> Result<()> {
-        let (side, price, quantity) =
-            (position.side(), position.entry_price(), position.quantity());
+        let (pos_id, side, price, quantity) = (
+            position.id(),
+            position.side(),
+            position.entry_price(),
+            position.quantity(),
+        );
         let cost = price * quantity;
 
         if self.balance < cost {
@@ -70,10 +80,9 @@ impl Backtest {
             PositionSide::Short => self.balance += cost,
         }
 
-        let position_evt = PositionEvent::from((self.index, price, PositionEventType::Open(side)));
-
+        let event = PositionEvent::from((pos_id, self.index, side, price));
         self.positions.push(position);
-        self.position_history.push(position_evt);
+        self.position_history.push(event);
 
         Ok(())
     }
@@ -95,11 +104,14 @@ impl Backtest {
                 }
             };
 
-            self.position_history.push(PositionEvent::from((
-                self.index,
-                exit_price,
-                PositionEventType::Close,
-            )));
+            if let Some(event) = self
+                .position_history
+                .iter_mut()
+                .find(|p| p.id() == position_id)
+            {
+                event.close(self.index, exit_price);
+            }
+
             return Ok(value);
         }
 
@@ -125,11 +137,13 @@ impl Backtest {
                     }
                 };
 
-                self.position_history.push(PositionEvent::from((
-                    self.index,
-                    exit_price,
-                    PositionEventType::Close,
-                )));
+                if let Some(event) = self
+                    .position_history
+                    .iter_mut()
+                    .find(|p| p.id() == position.id())
+                {
+                    event.close(self.index, exit_price);
+                }
 
                 value
             })

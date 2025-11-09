@@ -35,13 +35,18 @@ fn main() -> Result<()> {
             open_positions
                 .iter()
                 .filter(|p| {
-                    let entry = p.entry_price() * p.quantity();
+                    let cost = p.entry_price() * p.quantity();
                     let profit = p.estimate_profit(output);
-                    entry.addpercent(5.0) < profit
+                    cost.addpercent(5.0) < profit
                 })
                 .for_each(|p| {
                     if let Result::Ok(value) = bt.close_position(p.id(), output) {
-                        println!("closed {} value: {value}", p.id());
+                        let event = bt.find_event_by_position(&p);
+                        if let Some(evt) = event {
+                            println!("closed {} value: {value} -- {}", p.id(), evt);
+                        } else {
+                            println!("closed {} value: {value}", p.id());
+                        }
                     }
                 });
         }
