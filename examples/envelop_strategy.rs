@@ -24,7 +24,7 @@ fn main() -> Result<()> {
 
         if low < long_limit {
             let quantity = bt.current_balance().how_many(15.0) / long_limit;
-            let position = Position::from((PositionSide::Long, long_limit, quantity));
+            let position = Position::from((PositionSide::Long, long_limit, quantity, PositionExitRule::Market));
             _ = bt.open_position(position.clone());
         }
 

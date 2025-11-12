@@ -31,3 +31,8 @@ anyhow = "1.0.100"
 name = "envelop"
 path = "examples/envelop_strategy.rs"
 required-features = ["serde"]
+
+[[example]]
+name = "macdema"
+path = "examples/macd_ema.rs"
+required-features = ["serde"]

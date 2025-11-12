@@ -4,6 +4,18 @@ type ID = u32;
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[doc(alias = "ExitRule")]
+#[derive(Debug, Clone)]
+pub enum PositionExitRule {
+    Market,
+    Limit(f64),
+    StopLoss(f64),
+    TakeProfit(f64),
+    TrailingStop(f64),
+    TakeProfitAndStopLoss((f64, f64)),
+}
+
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[doc(alias = "Side")]
 #[derive(Debug, Clone, PartialEq)]
 pub enum PositionSide {
@@ -15,9 +27,10 @@ pub enum PositionSide {
 #[derive(Debug, Clone)]
 pub struct Position {
     id: ID,
-    side: PositionSide,
-    entry_price: f64,
     quantity: f64,
+    entry_price: f64,
+    side: PositionSide,
+    exit_rule: PositionExitRule,
 }
 
 impl Position {
@@ -44,6 +57,10 @@ impl Position {
         self.entry_price
     }
 
+    pub fn cost(&self) -> f64 {
+        self.entry_price * self.quantity
+    }
+
     pub fn estimate_profit(&self, exit_price: f64) -> f64 {
         match self.side {
             PositionSide::Long => (exit_price - self.entry_price) * self.quantity,
@@ -61,26 +78,34 @@ impl Position {
         }
         (v2 - v1) / v1 * 100.0
     }
+
+    pub fn exit_rule(&self) -> &PositionExitRule {
+        &self.exit_rule
+    }
 }
 
-impl From<(PositionSide, f64, f64)> for Position {
-    fn from((side, entry_price, quantity): (PositionSide, f64, f64)) -> Self {
+type P1 = (PositionSide, f64, f64, PositionExitRule);
+impl From<P1> for Position {
+    fn from((side, entry_price, quantity, exit_rule): P1) -> Self {
         Self {
             id: Self::random_id(),
             side,
-            entry_price,
             quantity,
+            exit_rule,
+            entry_price,
         }
     }
 }
 
-impl From<(ID, PositionSide, f64, f64)> for Position {
-    fn from((id, side, entry_price, quantity): (ID, PositionSide, f64, f64)) -> Self {
+type P2 = (ID, PositionSide, f64, f64, PositionExitRule);
+impl From<P2> for Position {
+    fn from((id, side, entry_price, quantity, exit_rule): P2) -> Self {
         Self {
             id,
             side,
-            entry_price,
             quantity,
+            exit_rule,
+            entry_price,
         }
     }
 }
@@ -126,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_position_event() {
-        let position: Position = (PositionSide::Long, 1.0, 1.0).into();
+        let position: Position = (PositionSide::Long, 1.0, 1.0, PositionExitRule::Market).into();
         let mut event = PositionEvent::from((position.id, 1, position.side, position.entry_price));
         event.close(3, 2.0);
         assert_eq!(event.len(), 2);

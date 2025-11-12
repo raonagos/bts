@@ -63,12 +63,8 @@ impl Backtest {
     }
 
     pub fn open_position(&mut self, position: Position) -> Result<()> {
-        let (pos_id, side, price, quantity) = (
-            position.id(),
-            position.side(),
-            position.entry_price(),
-            position.quantity(),
-        );
+        let (side, price, quantity) =
+            (position.side(), position.entry_price(), position.quantity());
         let cost = price * quantity;
 
         if self.balance < cost {
@@ -77,10 +73,10 @@ impl Backtest {
 
         match side {
             PositionSide::Long => self.balance -= cost,
-            PositionSide::Short => self.balance += cost,
+            PositionSide::Short => self.balance -= cost,
         }
 
-        let event = PositionEvent::from((pos_id, self.index, side, price));
+        let event = PositionEvent::from((position.id(), self.index, side, price));
         self.positions.push(position);
         self.position_history.push(event);
 
@@ -97,7 +93,7 @@ impl Backtest {
                     value
                 }
                 PositionSide::Short => {
-                    self.balance -= position.entry_price() * position.quantity();
+                    self.balance += position.cost();
                     let profit = (position.entry_price() - exit_price) * position.quantity();
                     self.balance += profit;
                     profit
@@ -119,33 +115,12 @@ impl Backtest {
     }
 
     pub fn close_all_positions(&mut self, exit_price: f64) -> Result<f64> {
-        let value = self
-            .positions
+        let positions = self.positions.clone();
+        let value = positions
             .iter()
             .map(|position| {
-                let value = match position.side() {
-                    PositionSide::Long => {
-                        let value = exit_price * position.quantity();
-                        self.balance += value;
-                        value
-                    }
-                    PositionSide::Short => {
-                        self.balance -= position.entry_price() * position.quantity();
-                        let profit = (position.entry_price() - exit_price) * position.quantity();
-                        self.balance += profit;
-                        profit
-                    }
-                };
-
-                if let Some(event) = self
-                    .position_history
-                    .iter_mut()
-                    .find(|p| p.id() == position.id())
-                {
-                    event.close(self.index, exit_price);
-                }
-
-                value
+                self.close_position(position.id(), exit_price)
+                    .unwrap_or_default()
             })
             .sum();
         self.positions.clear();

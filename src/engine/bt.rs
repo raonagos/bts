@@ -1,5 +1,5 @@
-use super::PositionSide::*;
 use super::*;
+use super::{PositionExitRule::Market, PositionSide::*};
 
 fn get_data() -> Vec<Candle> {
     vec![
@@ -18,7 +18,7 @@ fn test_long_position() {
     while let Some(candle) = bt.next() {
         let price = candle.close();
         if _counter == 0 {
-            let result = bt.open_position((18, Long, price, 1.0).into()); // balance (1000.0) -= 110.0 * 1.0 => 890.0;
+            let result = bt.open_position((18, Long, price, 1.0, Market).into()); // balance (1000.0) -= 110.0 * 1.0 => 890.0;
             assert!(result.is_ok());
             assert!(!bt.positions.is_empty());
             assert!(bt.balance < balance);
@@ -42,10 +42,10 @@ fn test_short_position() {
     while let Some(candle) = bt.next() {
         let price = candle.close();
         if _counter == 1 {
-            let result = bt.open_position((18, Short, price, 1.0).into());
+            let result = bt.open_position((18, Short, price, 1.0, Market).into());
             assert!(result.is_ok());
             assert!(!bt.positions.is_empty());
-            assert!(bt.balance > balance);
+            assert!(bt.balance < balance);
         }
         if _counter == 2 {
             let result = bt.close_position(18, price);
@@ -66,7 +66,7 @@ fn test_failed_long_position() {
     while let Some(candle) = bt.next() {
         let price = candle.close();
         if _counter == 1 {
-            let result = bt.open_position((18, Long, price, 1.0).into()); // balance (1000.0) -= 110.0 * 1.0 => 890.0;
+            let result = bt.open_position((18, Long, price, 1.0, Market).into()); // balance (1000.0) -= 110.0 * 1.0 => 890.0;
             assert!(result.is_ok());
             assert!(!bt.positions.is_empty());
             assert!(bt.balance < balance);
@@ -90,10 +90,10 @@ fn test_failed_short_position() {
     while let Some(candle) = bt.next() {
         let price = candle.close();
         if _counter == 0 {
-            let result = bt.open_position((18, Short, price, 1.0).into());
+            let result = bt.open_position((18, Short, price, 1.0, Market).into());
             assert!(result.is_ok());
             assert!(!bt.positions.is_empty());
-            assert!(bt.balance > balance);
+            assert!(bt.balance < balance);
         }
         if _counter == 1 {
             let result = bt.close_position(18, price);
