@@ -1,5 +1,3 @@
-type ID = u32;
-
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -32,22 +30,12 @@ pub enum PositionSide {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct Position {
-    id: ID,
     quantity: f64,
     entry_price: f64,
     side: PositionSide,
-    exit_rule: PositionExitRule,
 }
 
 impl Position {
-    pub fn id(&self) -> ID {
-        self.id
-    }
-
-    pub(crate) fn set_id(&mut self, id: ID) {
-        self.id = id;
-    }
-
     pub fn side(&self) -> &PositionSide {
         &self.side
     }
@@ -81,20 +69,14 @@ impl Position {
         }
         (v2 - v1) / v1 * 100.0
     }
-
-    pub fn exit_rule(&self) -> &PositionExitRule {
-        &self.exit_rule
-    }
 }
 
-type P1 = (PositionSide, f64, f64, PositionExitRule);
+type P1 = (PositionSide, f64, f64);
 impl From<P1> for Position {
-    fn from((side, entry_price, quantity, exit_rule): P1) -> Self {
+    fn from((side, entry_price, quantity): P1) -> Self {
         Self {
-            id: 0,
             side,
             quantity,
-            exit_rule,
             entry_price,
         }
     }
@@ -104,16 +86,11 @@ impl From<P1> for Position {
 #[doc(alias = "Event")]
 #[derive(Debug, Clone)]
 pub struct PositionEvent {
-    id: u32,
     open: (usize, PositionSide, f64),
     close: Option<(usize, f64)>,
 }
 
 impl PositionEvent {
-    pub fn id(&self) -> ID {
-        self.id
-    }
-
     pub fn len(&self) -> Option<usize> {
         self.close.map(|(pos_idx, _)| pos_idx - self.open.0)
     }
@@ -123,10 +100,9 @@ impl PositionEvent {
     }
 }
 
-impl From<(ID, usize, PositionSide, f64)> for PositionEvent {
-    fn from((id, pos_idx, side, price): (ID, usize, PositionSide, f64)) -> Self {
+impl From<(usize, PositionSide, f64)> for PositionEvent {
+    fn from((pos_idx, side, price): (usize, PositionSide, f64)) -> Self {
         Self {
-            id,
             open: (pos_idx, side, price),
             close: None,
         }
@@ -139,13 +115,8 @@ mod tests {
 
     #[test]
     fn test_position_event() {
-        let position = Position::from((
-            PositionSide::Long,
-            1.0,
-            1.0,
-            PositionExitRule::Limit(PriceType::Usd(1.0)),
-        ));
-        let mut event = PositionEvent::from((position.id, 1, position.side, position.entry_price));
+        let position = Position::from((PositionSide::Long, 1.0, 1.0));
+        let mut event = PositionEvent::from((1, position.side, position.entry_price));
         event.close(3, 2.0);
         assert_eq!(event.len(), Some(2));
     }

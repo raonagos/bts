@@ -1,20 +1,22 @@
 mod candle;
+mod order;
 mod position;
 
 #[cfg(test)]
 mod bt;
 
+use std::ops::SubAssign;
+
 pub use candle::*;
+pub use order::*;
 pub use position::*;
 
-use crate::{
-    PercentCalculus, TruncCalculus,
-    errors::{Error, Result},
-};
+use crate::errors::{Error, Result};
 
 #[derive(Debug)]
 pub struct Backtest {
     data: Vec<Candle>,
+    orders: Vec<Order>,
     positions: Vec<Position>,
     // used to reset balance
     _balance: f64,
@@ -28,6 +30,7 @@ impl Backtest {
         Self {
             data,
             index: 0,
+            orders: Vec::new(),
             positions: Vec::new(),
             balance: initial_balance,
             _balance: initial_balance,
@@ -48,12 +51,51 @@ impl Backtest {
         self.balance + positions_value
     }
 
-    pub fn positions(&self) -> Vec<Position> {
-        self.positions.clone()
+    pub fn orders(&self) -> &Vec<Order> {
+        &self.orders
+    }
+
+    pub fn positions(&self) -> &Vec<Position> {
+        &self.positions
     }
 
     pub fn events(&self) -> &Vec<PositionEvent> {
         &self.position_history
+    }
+
+    pub fn place_order(&mut self, order: Order) -> Result<()> {
+        if self.balance < order.cost() {
+            return Err(Error::LessBalance(self.balance));
+        }
+        self.balance.sub_assign(order.cost());
+        self.orders.push(order);
+        Ok(())
+    }
+
+    pub fn execute_orders(&mut self) -> Result<()> {
+        let orders = self.orders.clone();
+        let current_candle = self.data.get(self.index).cloned();
+        let index_to_remove = orders
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, o)| {
+                if let Some(cc) = &current_candle {
+                    let price = o.entry_price();
+                    if price >= cc.low() && price <= cc.high() {
+                        let position = o.clone().into();
+                        _ = self.open_position(position);
+                        return Some(idx);
+                    }
+                }
+                None
+            })
+            .collect::<Vec<_>>();
+
+        for &idx in index_to_remove.iter().rev() {
+            _ = self.orders.remove(idx);
+        }
+
+        Ok(())
     }
 
     pub fn open_position(&mut self, position: Position) -> Result<()> {
@@ -123,31 +165,6 @@ impl Backtest {
         self.positions.clear();
 
         Ok(value)
-    }
-
-    pub fn execute_exit_rules(&self, exit_price: f64) -> Result<()> {
-        let positions = self.positions.clone();
-        positions.iter().for_each(|p| {
-            let entry_price = p.entry_price();
-            let _is_done = match p.exit_rule() {
-                PositionExitRule::Limit(_type) | PositionExitRule::StopLoss(_type) => match _type {
-                    PriceType::Usd(rule_price) => rule_price == &exit_price,
-                    PriceType::Percent(rule_percent) => {
-                        let rule_price = if p.side() == &PositionSide::Long {
-                            entry_price.addpercent(*rule_percent)
-                        } else {
-                            entry_price.subpercent(*rule_percent)
-                        };
-                        rule_price.trunc_at(3) == exit_price.trunc_at(3)
-                    }
-                },
-                PositionExitRule::TakeProfit(_) => todo!(),
-                PositionExitRule::TrailingStop(_) => todo!(),
-                PositionExitRule::TakeProfitAndStopLoss(_) => todo!(),
-            };
-        });
-
-        Ok(())
     }
 
     pub fn reset(&mut self) {

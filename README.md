@@ -11,4 +11,3 @@
 - **Market Engine**: Processes candles one by one to test strategies in realistic conditions.
 - **Performance Metrics**: Calculates P&L, drawdown, Sharpe ratio, and more.
 - **Flexibility**: Compatible with the [`ta`](https://crates.io/crates/ta) crate for seamless integration with other indicators.
-
