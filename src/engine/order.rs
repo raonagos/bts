@@ -1,69 +1,45 @@
-use crate::engine::{Position, PositionSide};
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum OrderSide {
     Buy,
     Sell,
 }
 
-impl Into<PositionSide> for OrderSide {
-    fn into(self) -> PositionSide {
-        match self {
-            OrderSide::Buy => PositionSide::Long,
-            OrderSide::Sell => PositionSide::Short,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum OrderType {
     Market(f64),
     Limit(f64),
+    TakeProfitAndStopLoss(f64, f64),
+    TrailingStop(f64, f64),
 }
 
 impl OrderType {
     pub fn inner(&self) -> f64 {
         match self {
             Self::Market(price) | Self::Limit(price) => price.to_owned(),
+            _ => unreachable!(),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Order {
-    _type: OrderType,
+    entry_type: OrderType,
     pub quantity: f64,
     pub side: OrderSide,
-}
-
-impl Into<Position> for Order {
-    fn into(self) -> Position {
-        //! maybe this `into()` looping
-        Position::from((self.side.into(), self._type.inner(), self.quantity))
-    }
+    exit_type: Option<OrderType>,
 }
 
 impl Order {
-    pub fn reverse_position(position: &Position) -> Self {
-        Self {
-            _type: OrderType::Market(position.entry_price),
-            quantity: -position.quantity,
-            side: match position.side {
-                PositionSide::Long => OrderSide::Sell,
-                PositionSide::Short => OrderSide::Buy,
-            },
-        }
-    }
-
     pub fn entry_price(&self) -> f64 {
-        self._type.inner()
+        self.entry_type.inner()
     }
 
+    #[allow(unused)]
     pub(crate) fn cost(&self) -> f64 {
-        self._type.inner() * self.quantity
+        self.entry_type.inner() * self.quantity
     }
 
     pub fn type_(&self) -> &OrderType {
-        &self._type
+        &self.entry_type
     }
 }

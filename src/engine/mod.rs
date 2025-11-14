@@ -11,10 +11,9 @@ pub use position::*;
 #[derive(Debug)]
 pub struct Backtest {
     index: usize,
-    data: Vec<Candle>,
     orders: Vec<Order>,
-    positions: Vec<Position>,
-    position_history: Vec<PositionEvent>,
+    pub data: Vec<Candle>,
+    pub positions: Vec<Position>,
 }
 
 impl Backtest {
@@ -24,29 +23,14 @@ impl Backtest {
             index: 0,
             orders: Vec::new(),
             positions: Vec::new(),
-            position_history: Vec::new(),
         }
     }
+
+    pub fn test_mut(&mut self) {}
 
     pub fn place_order(&mut self, order: Order) -> Result<()> {
         self.orders.push(order);
         Ok(())
-    }
-
-    pub fn execute_orders(&mut self) {
-        let current_candle = self.data.get(self.index).cloned();
-        if let Some(cc) = current_candle {
-            let mut i = 0;
-            while i < self.orders.len() {
-                let price = self.orders[i].entry_price();
-                if price >= cc.low() && price <= cc.high() {
-                    let order = self.orders.remove(i);
-                    self.open_position(order.into());
-                } else {
-                    i += 1;
-                }
-            }
-        }
     }
 
     fn open_position(&mut self, position: Position) {
@@ -61,19 +45,42 @@ impl Backtest {
         Err(Error::PositionNotFound)
     }
 
+    fn execute_orders(&mut self) {
+        let current_candle = self.data.get(self.index).cloned();
+        if let Some(cc) = current_candle {
+            let mut i = 0;
+            while i < self.orders.len() {
+                let price = self.orders[i].entry_price();
+                if price >= cc.low() && price <= cc.high() {
+                    let order = self.orders.remove(i);
+                    self.open_position(Position(order));
+                } else {
+                    i += 1;
+                }
+            }
+        }
+    }
+
+    fn execute_positions(&mut self) {}
+
+    pub fn run<F>(&mut self, func: F)
+    where
+        F: Fn(&mut Self, &Candle),
+    {
+        use std::ops::AddAssign;
+
+        while self.index < self.data.len() {
+            let candle = &self.data[self.index].clone();
+            func(self, candle);
+            self.execute_orders();
+            self.execute_positions();
+            self.index.add_assign(1);
+        }
+    }
+
     pub fn reset(&mut self) {
         self.index = 0;
-        self.positions = Vec::new();
         self.orders = Vec::new();
-        self.position_history = Vec::new();
-    }
-}
-
-impl Iterator for Backtest {
-    type Item = Candle;
-    fn next(&mut self) -> Option<Self::Item> {
-        let item = self.data.get(self.index).cloned();
-        self.index += 1;
-        item
+        self.positions = Vec::new();
     }
 }
