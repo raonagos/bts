@@ -1,4 +1,40 @@
-use crate::engine::Order;
+use super::order::{Order, OrderSide};
 
+/// Represents the side of a position (long or short).
 #[derive(Debug, Clone, PartialEq)]
-pub struct Position(pub Order);
+pub enum PositionSide {
+    Long,
+    Short,
+}
+
+/// Represents a trading position with an associated order.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Position {
+    order: Order,
+    pub side: PositionSide,
+}
+
+impl From<Order> for Position {
+    fn from(value: Order) -> Self {
+        Self {
+            side: match value.side {
+                OrderSide::Buy => PositionSide::Long,
+                OrderSide::Sell => PositionSide::Short,
+            },
+            order: value,
+        }
+    }
+}
+
+impl std::ops::Deref for Position {
+    type Target = Order;
+    fn deref(&self) -> &Self::Target {
+        &self.order
+    }
+}
+
+impl std::ops::DerefMut for Position {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.order
+    }
+}

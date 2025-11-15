@@ -5,8 +5,8 @@ pub type Result<T> = StdResult<T, Error>;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
-    #[error("Balance less than {0}")]
-    LessBalance(f64),
+    #[error("Insufficient funds {0}")]
+    InsufficientFunds(f64),
     #[error("Position not found")]
     PositionNotFound,
     #[error("{0}")]
