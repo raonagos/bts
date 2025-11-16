@@ -1,3 +1,9 @@
+//! BackTest Strategy
+//!
+//! **BTS** is a Rust library designed for backtesting trading strategies on candlestick data.
+//! It enables testing technical indicators, custom strategies, and simulating trading performance
+//! on historical or generated data.
+
 pub mod engine;
 pub mod errors;
 pub mod utils;

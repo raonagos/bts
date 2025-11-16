@@ -1,2 +1,10 @@
-### Rewrite
-- [x] Implement `PlaceOrder` to add an order statement to the flow and this order will check by the `BackTest` to open (ornot) a position
+# BTS TODO
+
+## ✅ Done
+- [x] Implement `PlaceOrder` to add orders and check position opening
+
+## 📌 In Progress
+- [ ] Add `Candle` builder for validation
+- [ ] Create `Report` struct to wrap metrics (P&L, drawdown, Sharpe)
+- [ ] Split order types: `OrderType` (open) + `ExitRule` (close only)
+- [ ] Add methods to modify orders/positions (update SL/TP/trailing stop)

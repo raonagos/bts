@@ -1,6 +1,6 @@
 [package]
 name = "bts"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["tetuaoro <65575727+tetuaoro@users.noreply.github.com>"]
 
