@@ -1,5 +1,4 @@
 use super::*;
-use super::{PositionExitRule::Limit, PositionSide::*};
 
 fn get_data() -> Vec<Candle> {
     vec![
@@ -10,97 +9,111 @@ fn get_data() -> Vec<Candle> {
 }
 
 #[test]
-fn test_long_position() {
+fn long_position() {
     let data = get_data();
     let balance = 1000.0;
-    let mut bt = Backtest::new(data, balance);
-    let mut _counter = 0;
-    while let Some(candle) = bt.next() {
-        let price = candle.close();
-        if _counter == 0 {
-            let result = bt.open_position((Long, price, 1.0, Limit(1.0)).into()); // balance (1000.0) -= 110.0 * 1.0 => 890.0;
-            assert!(result.is_ok());
-            assert!(!bt.positions.is_empty());
-            assert_eq!(bt.balance, 890.0);
-        }
-        if _counter == 1 {
-            let result = bt.close_position(1, price);
-            assert!(result.is_ok());
-            assert!(bt.positions.is_empty());
-            assert_eq!(bt.balance, 1010.0);
-        }
-        _counter += 1;
-    }
+    let mut bt = Backtest::new(data, balance).unwrap();
+
+    let candle = bt.next().unwrap();
+    let price = candle.close();
+
+    let order: Order = (OrderType::Market(price), 1.0, OrderSide::Buy).into();
+    let result = bt.open_position(Position::from(order));
+    assert!(result.is_ok());
+    assert!(!bt.positions.is_empty());
+    assert_eq!(bt.balance(), 1000.0 - (110.0 * 1.0)); // 890.0
+
+    let candle = bt.next().unwrap();
+    let price = candle.close();
+
+    let position = bt.positions.front().unwrap().clone();
+    let result = bt.close_position(&position, price, true);
+    assert!(result.is_ok());
+    let profit = result.unwrap();
+    assert!(bt.positions.is_empty());
+    assert_eq!(profit, (120.0 - 110.0) * 1.0); // 10.0
+    assert_eq!(bt.balance(), 1010.0); // 890.0 + 110.0 + 10.0 = 1000.0 + 10.0 = 1010.0
 }
 
 #[test]
-fn test_short_position() {
+fn short_position() {
     let data = get_data();
     let balance = 1000.0;
-    let mut bt = Backtest::new(data, balance);
-    let mut _counter = 0;
-    while let Some(candle) = bt.next() {
-        let price = candle.close();
-        if _counter == 1 {
-            let result = bt.open_position((Short, price, 1.0, Limit(1.0)).into());
-            assert!(result.is_ok());
-            assert!(!bt.positions.is_empty());
-            assert_eq!(bt.balance, 880.0);
-        }
-        if _counter == 2 {
-            let result = bt.close_position(2, price);
-            assert!(result.is_ok());
-            assert!(bt.positions.is_empty());
-            assert_eq!(bt.balance, 1010.0);
-        }
-        _counter += 1;
-    }
+    let mut bt = Backtest::new(data, balance).unwrap();
+
+    bt.next().unwrap();
+    let candle = bt.next().unwrap();
+    let price = candle.close();
+
+    let order: Order = (OrderType::Market(price), 1.0, OrderSide::Sell).into();
+    let result = bt.open_position(Position::from(order));
+    assert!(result.is_ok());
+    assert!(!bt.positions.is_empty());
+    assert_eq!(bt.balance(), 1000.0 - (120.0 * 1.0)); // 880.0
+
+    let candle = bt.next().unwrap();
+    let price = candle.close();
+
+    let position = bt.positions.front().unwrap().clone();
+    let result = bt.close_position(&position, price, true);
+    assert!(result.is_ok());
+    let profit = result.unwrap();
+    assert!(bt.positions.is_empty());
+    assert_eq!(profit, (120.0 - 110.0) * 1.0); // 10.0
+    assert_eq!(bt.balance(), 1010.0); // 880.0 + 120.0 + 10.0 = 1010.0
 }
 
 #[test]
-fn test_failed_long_position() {
+fn failed_long_position() {
     let data = get_data();
     let balance = 1000.0;
-    let mut bt = Backtest::new(data, balance);
-    let mut _counter = 0;
-    while let Some(candle) = bt.next() {
-        let price = candle.close();
-        if _counter == 1 {
-            let result = bt.open_position((Long, price, 1.0, Limit(1.0)).into()); // balance (1000.0) -= 110.0 * 1.0 => 890.0;
-            assert!(result.is_ok());
-            assert!(!bt.positions.is_empty());
-            assert_eq!(bt.balance, 880.0);
-        }
-        if _counter == 2 {
-            let result = bt.close_position(2, price);
-            assert!(result.is_ok());
-            assert!(bt.positions.is_empty());
-            assert_eq!(bt.balance, 990.0);
-        }
-        _counter += 1;
-    }
+    let mut bt = Backtest::new(data, balance).unwrap();
+
+    bt.next().unwrap();
+    let candle = bt.next().unwrap();
+    let price = candle.close();
+
+    let order: Order = (OrderType::Market(price), 1.0, OrderSide::Buy).into();
+    let result = bt.open_position(Position::from(order));
+    assert!(result.is_ok());
+    assert!(!bt.positions.is_empty());
+    assert_eq!(bt.balance(), 1000.0 - (120.0 * 1.0)); // 880.0
+
+    let candle = bt.next().unwrap();
+    let price = candle.close();
+
+    let position = bt.positions.front().unwrap().clone();
+    let result = bt.close_position(&position, price, true);
+    assert!(result.is_ok());
+    let profit = result.unwrap();
+    assert!(bt.positions.is_empty());
+    assert_eq!(profit, (110.0 - 120.0) * 1.0); // -10.0
+    assert_eq!(bt.balance(), 990.0); // 880.0 + 120.0 - 10.0 = 990.0
 }
 
 #[test]
-fn test_failed_short_position() {
+fn failed_short_position() {
     let data = get_data();
     let balance = 1000.0;
-    let mut bt = Backtest::new(data, balance);
-    let mut _counter = 0;
-    while let Some(candle) = bt.next() {
-        let price = candle.close();
-        if _counter == 0 {
-            let result = bt.open_position((Short, price, 1.0, Limit(1.0)).into());
-            assert!(result.is_ok());
-            assert!(!bt.positions.is_empty());
-            assert_eq!(bt.balance, 890.0);
-        }
-        if _counter == 1 {
-            let result = bt.close_position(1, price);
-            assert!(result.is_ok());
-            assert!(bt.positions.is_empty());
-            assert_eq!(bt.balance, 990.0);
-        }
-        _counter += 1;
-    }
+    let mut bt = Backtest::new(data, balance).unwrap();
+
+    let candle = bt.next().unwrap();
+    let price = candle.close();
+
+    let order: Order = (OrderType::Market(price), 1.0, OrderSide::Sell).into();
+    let result = bt.open_position(Position::from(order));
+    assert!(result.is_ok());
+    assert!(!bt.positions.is_empty());
+    assert_eq!(bt.balance(), 1000.0 - (110.0 * 1.0)); // 890.0
+
+    let candle = bt.next().unwrap();
+    let price = candle.close();
+
+    let position = bt.positions.front().unwrap().clone();
+    let result = bt.close_position(&position, price, true);
+    assert!(result.is_ok());
+    let profit = result.unwrap();
+    assert!(bt.positions.is_empty());
+    assert_eq!(profit, (110.0 - 120.0) * 1.0); // -10.0
+    assert_eq!(bt.balance(), 990.0); // 890.0 + 110.0 - 10.0 = 990.0
 }

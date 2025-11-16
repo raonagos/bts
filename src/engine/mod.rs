@@ -3,6 +3,9 @@ mod order;
 mod position;
 mod wallet;
 
+#[cfg(test)]
+mod bt;
+
 use std::collections::{VecDeque, vec_deque::Iter};
 
 use crate::{
@@ -39,6 +42,16 @@ impl std::ops::Deref for Backtest {
 
     fn deref(&self) -> &Self::Target {
         &self.wallet
+    }
+}
+
+impl Iterator for Backtest {
+    type Item = Candle;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let candle = self.data.get(self.index).cloned();
+        self.index += 1;
+        candle
     }
 }
 
