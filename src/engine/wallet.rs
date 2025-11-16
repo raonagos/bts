@@ -35,10 +35,7 @@ impl Wallet {
     pub fn free_balance(&self) -> Result<f64> {
         let free_balance = self.balance - self.locked;
         if free_balance < 0.0 {
-            return Err(Error::Msg(format!(
-                "Negative free balance: balance={}, locked={}",
-                self.balance, self.locked
-            )));
+            return Err(Error::NegFreeBalance(self.balance, self.locked));
         }
         Ok(free_balance)
     }

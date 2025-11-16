@@ -15,6 +15,10 @@ pub enum Error {
     #[error("Insufficient funds: required {0}, available {1}")]
     InsufficientFunds(f64, f64),
 
+    /// The free balance is negative.
+    #[error("Negative free balance: balance={0}, locked={1}")]
+    NegFreeBalance(f64, f64),
+
     /// The order was not found.
     #[error("Order not found")]
     OrderNotFound,
@@ -26,6 +30,18 @@ pub enum Error {
     /// An error context was encountered.
     #[error("{0}")]
     Msg(String),
+
+    /// Take profit or Stop loss should be positive.
+    #[error("TakeProfit or StopLoss must be positive")]
+    NegTakeProfitAndStopLoss,
+
+    /// Trailing Stop should be positive.
+    #[error("TrailingStop must be positive and greater than 0")]
+    NegZeroTrailingStop,
+
+    /// Use market or limit to open a position, and take profit, stop loss or trailing stop to close a position.
+    #[error("Try another order type")]
+    MismatchedOrderType,
 
     /// I/O error occurred.
     // utils.rs

@@ -135,12 +135,11 @@ impl Backtest {
     }
 
     /// Executes pending orders based on current candle data.
-    fn execute_orders(&mut self) -> Result<()> {
-        let cc = self.data[self.index].clone();
-        let mut orders = VecDeque::new();
+    fn execute_orders(&mut self, candle: &Candle) -> Result<()> {
+        let mut orders = VecDeque::with_capacity(self.orders.len());
         while let Some(order) = self.orders.pop_front() {
             let price = order.entry_price();
-            if price >= cc.low() && price <= cc.high() {
+            if price >= candle.low() && price <= candle.high() {
                 self.open_position(Position::from(order))?;
             } else {
                 orders.push_back(order);
@@ -151,64 +150,78 @@ impl Backtest {
     }
 
     /// Executes position management (take-profit, stop-loss, trailing stop).
-    fn execute_positions(&mut self) -> Result<()> {
-        let cc = self.data[self.index].clone();
-        let mut positions = VecDeque::new();
-        while let Some(position) = self.positions.pop_front() {
+    fn execute_positions(&mut self, candle: &Candle) -> Result<()> {
+        // current candle
+        let mut positions = VecDeque::with_capacity(self.positions.len());
+        while let Some(mut position) = self.positions.pop_front() {
             let should_close = match position.exit_rule() {
                 Some(OrderType::TakeProfitAndStopLoss(take_profit, stop_loss)) => {
+                    if *take_profit < 0.0 || *stop_loss < 0.0 {
+                        return Err(Error::NegTakeProfitAndStopLoss);
+                    }
+
                     match position.side {
                         PositionSide::Long => {
-                            (take_profit > &0.0 && take_profit <= &cc.high())
-                                || (stop_loss > &0.0 && stop_loss >= &cc.low())
+                            if *take_profit > 0.0 && take_profit <= &candle.high() {
+                                Some(*take_profit)
+                            } else if *stop_loss > 0.0 && stop_loss >= &candle.low() {
+                                Some(*stop_loss)
+                            } else {
+                                None
+                            }
                         }
                         PositionSide::Short => {
-                            (take_profit > &0.0 && take_profit >= &cc.low())
-                                || (stop_loss > &0.0 && stop_loss <= &cc.high())
+                            if *take_profit > 0.0 && take_profit >= &candle.low() {
+                                Some(*take_profit)
+                            } else if *stop_loss > 0.0 && stop_loss <= &candle.high() {
+                                Some(*stop_loss)
+                            } else {
+                                None
+                            }
                         }
                     }
                 }
-                Some(OrderType::TrailingStop(trail_price, _)) => match position.side {
-                    PositionSide::Long => cc.low() <= *trail_price,
-                    PositionSide::Short => cc.high() >= *trail_price,
-                },
+                Some(OrderType::TrailingStop(price, percent)) => {
+                    if *price <= 0.0 || *percent <= 0.0 {
+                        return Err(Error::NegZeroTrailingStop);
+                    }
+
+                    match position.side {
+                        PositionSide::Long => {
+                            let execute_price = price.subpercent(*percent);
+                            if &candle.high() > price {
+                                position.set_trailingstop(candle.high());
+                            }
+                            if execute_price > 0.0 && execute_price >= candle.low() {
+                                Some(execute_price)
+                            } else {
+                                None
+                            }
+                        }
+                        PositionSide::Short => {
+                            let execute_price = price.addpercent(*percent);
+                            if &candle.low() < price {
+                                position.set_trailingstop(candle.low());
+                            }
+                            if execute_price > 0.0 && execute_price <= candle.high() {
+                                Some(execute_price)
+                            } else {
+                                None
+                            }
+                        }
+                    }
+                }
+                None => None,
                 _ => {
-                    return Err(Error::Msg(
-                        "Allow only TakeProfitAndStopLoss or TrailingStop".into(),
-                    ));
+                    return Err(Error::MismatchedOrderType);
                 }
             };
 
-            if should_close {
-                let exit_price = match position.exit_rule() {
-                    Some(OrderType::TakeProfitAndStopLoss(take_profit, stop_loss)) => {
-                        match position.side {
-                            PositionSide::Long => {
-                                if take_profit > &0.0 && take_profit <= &cc.high() {
-                                    *take_profit
-                                } else {
-                                    *stop_loss
-                                }
-                            }
-                            PositionSide::Short => {
-                                if take_profit > &0.0 && take_profit >= &cc.low() {
-                                    *take_profit
-                                } else {
-                                    *stop_loss
-                                }
-                            }
-                        }
-                    }
-                    Some(OrderType::TrailingStop(price, percent)) => match position.side {
-                        //todo update trailing stop
-                        PositionSide::Long => price.subpercent(*percent),
-                        PositionSide::Short => price.addpercent(*percent),
-                    },
-                    _ => unreachable!(),
-                };
-                self.close_position(&position, exit_price)?;
-            } else {
-                positions.push_back(position);
+            match should_close {
+                Some(exit_price) => {
+                    self.close_position(&position, exit_price)?;
+                }
+                None => positions.push_back(position),
             }
         }
         self.positions.append(&mut positions);
@@ -223,8 +236,8 @@ impl Backtest {
         while self.index < self.data.len() {
             let candle = &self.data[self.index].clone();
             func(self, candle)?;
-            self.execute_orders()?;
-            self.execute_positions()?;
+            self.execute_orders(candle)?;
+            self.execute_positions(candle)?;
             self.index += 1;
         }
 
