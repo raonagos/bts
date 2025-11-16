@@ -43,7 +43,14 @@ impl std::ops::Deref for Backtest {
 }
 
 impl Backtest {
-    /// Creates a new backtest instance with the given candle data.
+    /// Creates a new backtest instance.
+    ///
+    /// ### Arguments
+    /// * `data` - Vector of candle data.
+    /// * `initial_balance` - Initial wallet balance.
+    ///
+    /// ### Returns
+    /// The new backtest instance or an error.
     pub fn new(data: Vec<Candle>, initial_balance: f64) -> Result<Self> {
         if data.is_empty() {
             return Err(Error::CandleDataEmpty);
@@ -59,22 +66,28 @@ impl Backtest {
         })
     }
 
-    /// Iteratable order.
+    /// Returns an iterator over the pending orders.
     pub fn orders(&self) -> Iter<'_, Order> {
         self.orders.iter()
     }
 
-    /// Iteratable position.
+    /// Returns an iterator over the open positions.
     pub fn positions(&self) -> Iter<'_, Position> {
         self.positions.iter()
     }
 
-    /// Iteratable events.
+    /// Returns an iterator over the recorded events.
     pub fn events(&self) -> std::slice::Iter<'_, Event> {
         self.events.iter()
     }
 
     /// Places a new order.
+    ///
+    /// ### Arguments
+    /// * `order` - The order to place.
+    ///
+    /// ### Returns
+    /// Ok if successful, or an error.
     pub fn place_order(&mut self, order: Order) -> Result<()> {
         self.wallet.lock(order.cost())?;
         self.orders.push_back(order.clone());
@@ -83,6 +96,12 @@ impl Backtest {
     }
 
     /// Deletes a pending order.
+    ///
+    /// ### Arguments
+    /// * `order` - Reference to the order to delete.
+    ///
+    /// ### Returns
+    /// Ok if successful, or an error.
     pub fn delete_order(&mut self, order: &Order) -> Result<()> {
         let order_idx = self
             .orders
@@ -107,6 +126,14 @@ impl Backtest {
     }
 
     /// Closes an existing position.
+    ///
+    /// ### Arguments
+    /// * `position` - Reference to the position to close.
+    /// * `exit_price` - The price at which to close the position.
+    /// * `force_remove` - If true, removes the position without checking conditions.
+    ///
+    /// ### Returns
+    /// The profit/loss from closing the position, or an error.
     pub fn close_position(&mut self, position: &Position, exit_price: f64, force_remove: bool) -> Result<f64> {
         if exit_price <= 0.0 || !exit_price.is_finite() {
             return Err(Error::Msg("Invalid exit price".into()));
@@ -128,6 +155,13 @@ impl Backtest {
         Ok(profit)
     }
 
+    /// Closes all open positions at the given exit price.
+    ///
+    /// ### Arguments
+    /// * `exit_price` - The price at which to close all positions.
+    ///
+    /// ### Returns
+    /// Ok if successful, or an error.
     pub fn close_all_positions(&mut self, exit_price: f64) -> Result<()> {
         while let Some(position) = self.positions.pop_front() {
             self.close_position(&position, exit_price, false)?;
@@ -229,15 +263,21 @@ impl Backtest {
     }
 
     /// Runs the backtest, executing the provided function for each candle.
+    ///
+    /// ### Arguments
+    /// * `func` - A closure that takes the backtest and current candle.
+    ///
+    /// ### Returns
+    /// Ok if successful, or an error.
     pub fn run<F>(&mut self, mut func: F) -> Result<()>
     where
         F: FnMut(&mut Self, &Candle) -> Result<()>,
     {
         while self.index < self.data.len() {
-            let candle = &self.data[self.index].clone();
-            func(self, candle)?;
-            self.execute_orders(candle)?;
-            self.execute_positions(candle)?;
+            let candle = self.data.get(self.index).ok_or(Error::CandleNotFound)?.clone();
+            func(self, &candle)?;
+            self.execute_orders(&candle)?;
+            self.execute_positions(&candle)?;
             self.index += 1;
         }
 
