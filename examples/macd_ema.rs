@@ -25,7 +25,6 @@ fn main() -> anyhow::Result<()> {
         let MovingAverageConvergenceDivergenceOutput { histogram, .. } = macd.next(close);
 
         let free_balance = bt.free_balance()?;
-        // max trade: 3.69245%, max profit: 100%
         let amount = free_balance.how_many(5.0);
 
         // 21: minimum to trade
@@ -33,7 +32,7 @@ fn main() -> anyhow::Result<()> {
             let quantity = amount / close;
             let order = (
                 OrderType::Market(close),
-                OrderType::TakeProfitAndStopLoss(close.addpercent(4.0), close.subpercent(2.0)),
+                OrderType::TakeProfitAndStopLoss(close * 2.63, close.subpercent(2.0)),
                 quantity,
                 OrderSide::Buy,
             );

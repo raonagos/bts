@@ -20,7 +20,6 @@ fn main() -> anyhow::Result<()> {
         let low = candle.low();
 
         let free_balance = bt.free_balance()?;
-        // max trade: 2.40487%, max profit: 100%
         let amount = free_balance.how_many(5.0);
 
         // 21: minimum to trade

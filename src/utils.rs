@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 
 #[cfg(feature = "serde")]
-use chrono::serde::ts_microseconds;
+use chrono::serde::ts_milliseconds;
 #[cfg(feature = "serde")]
 use serde::Deserialize;
 
@@ -33,9 +33,9 @@ pub struct Data {
     volume: f64,
     #[cfg_attr(feature = "serde", serde(rename = "taker_buy_quote_volume"))]
     bid: f64,
-    #[cfg_attr(feature = "serde", serde(with = "ts_microseconds"))]
+    #[cfg_attr(feature = "serde", serde(with = "ts_milliseconds"))]
     open_time: DateTime<Utc>,
-    #[cfg_attr(feature = "serde", serde(with = "ts_microseconds"))]
+    #[cfg_attr(feature = "serde", serde(with = "ts_milliseconds"))]
     close_time: DateTime<Utc>,
 }
 
