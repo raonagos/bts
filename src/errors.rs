@@ -36,13 +36,33 @@ pub enum Error {
     #[error("Negative free balance: balance={0}, locked={1}")]
     NegFreeBalance(f64, f64),
 
+    /// The locked funds are insufficient for the requested amount.
+    ///
+    /// ### Arguments
+    /// * `0` - The currently locked funds.
+    /// * `1` - The requested amount to unlock.
+    #[error("Locked funds {0} are insufficient for amount {1}")]
+    UnlockBalance(f64, f64),
+
     /// The requested order was not found.
     #[error("Order not found")]
     OrderNotFound,
 
+    /// Failed to remove an order.
+    #[error("Failed to remove order")]
+    RemoveOrder,
+
     /// The requested position was not found.
     #[error("Position not found")]
     PositionNotFound,
+
+    /// Failed to remove a position.
+    #[error("Failed to remove position")]
+    RemovePosition,
+
+    /// The exit price is invalid.
+    #[error("Invalid exit price {0}")]
+    ExitPrice(f64),
 
     /// A generic error with a custom message.
     ///

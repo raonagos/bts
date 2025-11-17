@@ -21,10 +21,10 @@ fn main() -> anyhow::Result<()> {
 
         let free_balance = bt.free_balance()?;
         // max trade: 2.40487%, max profit: 100%
-        let amount = free_balance.how_many(100.0);
+        let amount = free_balance.how_many(5.0);
 
         // 21: minimum to trade
-        if amount > 21.0 && low < long_limit {
+        if free_balance > (initial_balance / 2.0) && amount > 21.0 && low < long_limit {
             let quantity = amount / long_limit;
             let order = (
                 OrderType::Market(long_limit),
@@ -44,10 +44,7 @@ fn main() -> anyhow::Result<()> {
     bt.close_all_positions(last_price)?;
 
     let n = candles.len();
-    let close_position_events = bt
-        .events()
-        .filter(|e| matches!(e, Event::DelPosition(_)))
-        .count();
+    let close_position_events = bt.events().filter(|e| matches!(e, Event::DelPosition(_))).count();
     println!("trades {close_position_events} / {n}");
 
     let new_balance = bt.balance();

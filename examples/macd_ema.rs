@@ -2,8 +2,7 @@ use bts::prelude::*;
 
 use ta::{
     indicators::{
-        ExponentialMovingAverage, MovingAverageConvergenceDivergence,
-        MovingAverageConvergenceDivergenceOutput,
+        ExponentialMovingAverage, MovingAverageConvergenceDivergence, MovingAverageConvergenceDivergenceOutput,
     },
     *,
 };
@@ -27,14 +26,14 @@ fn main() -> anyhow::Result<()> {
 
         let free_balance = bt.free_balance()?;
         // max trade: 3.69245%, max profit: 100%
-        let amount = free_balance.how_many(100.0);
+        let amount = free_balance.how_many(5.0);
 
         // 21: minimum to trade
-        if amount > 21.0 && close > output && histogram > 0.0 {
+        if free_balance > (initial_balance / 2.0) && amount > 21.0 && close > output && histogram > 0.0 {
             let quantity = amount / close;
             let order = (
                 OrderType::Market(close),
-                OrderType::TakeProfitAndStopLoss(close * 2.1, 0.0),
+                OrderType::TakeProfitAndStopLoss(close.addpercent(4.0), close.subpercent(2.0)),
                 quantity,
                 OrderSide::Buy,
             );
@@ -50,10 +49,7 @@ fn main() -> anyhow::Result<()> {
     bt.close_all_positions(last_price)?;
 
     let n = candles.len();
-    let close_position_events = bt
-        .events()
-        .filter(|e| matches!(e, Event::DelPosition(_)))
-        .count();
+    let close_position_events = bt.events().filter(|e| matches!(e, Event::DelPosition(_))).count();
     println!("trades {close_position_events} / {n}");
 
     let new_balance = bt.balance();

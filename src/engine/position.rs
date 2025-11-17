@@ -49,7 +49,7 @@ impl std::ops::DerefMut for Position {
 }
 
 impl Position {
-    pub fn estimate_profit(&self, exit_price: f64) -> f64 {
+    pub fn estimate_pnl(&self, exit_price: f64) -> f64 {
         match self.side {
             PositionSide::Long => (exit_price - self.entry_price()) * self.quantity,
             PositionSide::Short => (self.entry_price() - exit_price) * self.quantity,
@@ -130,24 +130,24 @@ fn position_deref_mut() {
 
 #[cfg(test)]
 #[test]
-fn estimate_profit_long_position() {
+fn estimate_pnl_long_position() {
     let order: Order = (OrderType::Market(100.0), 2.0, OrderSide::Buy).into();
     let position = Position::from(order);
 
-    assert_eq!(position.estimate_profit(120.0), 40.0);
-    assert_eq!(position.estimate_profit(80.0), -40.0);
-    assert_eq!(position.estimate_profit(100.0), 0.0);
+    assert_eq!(position.estimate_pnl(120.0), 40.0);
+    assert_eq!(position.estimate_pnl(80.0), -40.0);
+    assert_eq!(position.estimate_pnl(100.0), 0.0);
 }
 
 #[cfg(test)]
 #[test]
-fn estimate_profit_short_position() {
+fn estimate_pnl_short_position() {
     let order: Order = (OrderType::Market(100.0), 2.0, OrderSide::Sell).into();
     let position = Position::from(order);
 
-    assert_eq!(position.estimate_profit(80.0), 40.0);
-    assert_eq!(position.estimate_profit(120.0), -40.0);
-    assert_eq!(position.estimate_profit(100.0), 0.0);
+    assert_eq!(position.estimate_pnl(80.0), 40.0);
+    assert_eq!(position.estimate_pnl(120.0), -40.0);
+    assert_eq!(position.estimate_pnl(100.0), 0.0);
 }
 
 #[cfg(test)]

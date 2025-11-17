@@ -1,8 +1,20 @@
-//! BackTest Strategy
+//! A Rust library for backtesting trading strategies on candlestick data.
 //!
-//! **BTS** is a Rust library designed for backtesting trading strategies on candlestick data.
-//! It enables testing technical indicators, custom strategies, and simulating trading performance
-//! on historical or generated data.
+//! **BTS (BackTest Strategy)** provides tools to simulate trading strategies using historical or generated OHLCV data.
+//! It supports technical indicators, custom strategies, and performance metrics like P&L, drawdown, and Sharpe ratio.
+//!
+//! ## Core Components
+//! - **Candle**: Represents OHLCV (Open, High, Low, Close, Volume) data.
+//! - **Order**: Market or limit orders for buying/selling assets.
+//! - **Position**: Open trades with configurable exit rules (take-profit, stop-loss, trailing stop).
+//! - **Wallet**: Tracks balance, locked funds, and P&L.
+//! - **Event**: Logs backtest events (orders, positions, executions).
+//!
+//! ## Features
+//! - **Performance**: Uses `VecDeque` for O(1) order/position operations.
+//! - **Flexibility**: Compatible with the [`ta`](https://crates.io/crates/ta) crate for technical analysis.
+//! - **Error Handling**: Validates orders, positions, and market data.
+//! - **Metrics**: Calculates P&L, drawdown, Sharpe ratio, and win rate.
 
 pub mod engine;
 pub mod errors;

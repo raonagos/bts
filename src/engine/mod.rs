@@ -121,10 +121,7 @@ impl Backtest {
             .iter()
             .position(|o| o == order)
             .ok_or(Error::OrderNotFound)?;
-        let order = self
-            .orders
-            .remove(order_idx)
-            .ok_or(Error::Msg("Failed to remove order".into()))?;
+        let order = self.orders.remove(order_idx).ok_or(Error::RemoveOrder)?;
         self.wallet.unlock(order.cost())?;
         self.events.push(Event::DelOrder(order));
         Ok(())
@@ -149,7 +146,7 @@ impl Backtest {
     /// The profit/loss from closing the position, or an error.
     pub fn close_position(&mut self, position: &Position, exit_price: f64, force_remove: bool) -> Result<f64> {
         if exit_price <= 0.0 || !exit_price.is_finite() {
-            return Err(Error::Msg("Invalid exit price".into()));
+            return Err(Error::ExitPrice(exit_price));
         }
         if force_remove {
             let pos_idx = self
@@ -157,15 +154,15 @@ impl Backtest {
                 .iter()
                 .position(|p| p == position)
                 .ok_or(Error::PositionNotFound)?;
-            self.positions
-                .remove(pos_idx)
-                .ok_or(Error::Msg("Failed to remove position".into()))?;
+            self.positions.remove(pos_idx).ok_or(Error::RemovePosition)?;
         }
         // Calculate profit/loss and update wallet
-        let profit = position.estimate_profit(exit_price);
-        self.wallet.add(profit + position.cost())?;
+        let pnl = position.estimate_pnl(exit_price);
+        let total_amount = pnl + position.cost();
+        self.wallet.add(total_amount)?;
+        self.wallet.sub_pnl(total_amount);
         self.events.push(Event::DelPosition(position.clone()));
-        Ok(profit)
+        Ok(pnl)
     }
 
     /// Closes all open positions at the given exit price.
@@ -200,7 +197,14 @@ impl Backtest {
     /// Executes position management (take-profit, stop-loss, trailing stop).
     fn execute_positions(&mut self, candle: &Candle) -> Result<()> {
         let mut positions = VecDeque::with_capacity(self.positions.len());
+        let mut total_unrealized_pnl = 0.0;
+
         while let Some(mut position) = self.positions.pop_front() {
+            // calculate unrealized P&L for this position
+            let current_price = candle.close();
+            let pnl = position.estimate_pnl(current_price);
+            total_unrealized_pnl += pnl;
+
             let should_close = match position.exit_rule() {
                 Some(OrderType::TakeProfitAndStopLoss(take_profit, stop_loss)) => {
                     if *take_profit < 0.0 || *stop_loss < 0.0 {
@@ -271,7 +275,9 @@ impl Backtest {
                 None => positions.push_back(position),
             }
         }
+
         self.positions.append(&mut positions);
+        self.wallet.set_unrealized_pnl(total_unrealized_pnl);
         Ok(())
     }
 

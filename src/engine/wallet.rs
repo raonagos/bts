@@ -9,20 +9,23 @@ pub struct Wallet {
     balance: f64,
     // Funds locked in open positions
     locked: f64,
+    // Unrealized profit/loss from open positions
+    unrealized_pnl: f64,
 }
 
 impl Wallet {
     /// Creates a new wallet with the given initial balance.
-    /// Negative balances are set to 0.
+    /// Negative balances are rejected.
     pub fn new(balance: f64) -> Result<Self> {
         if balance <= 0.0 {
             return Err(Error::NegZeroBalance(balance));
         }
 
         Ok(Self {
-            initial_balance: balance,
-            balance: balance,
+            balance,
             locked: 0.0,
+            unrealized_pnl: 0.0,
+            initial_balance: balance,
         })
     }
 
@@ -31,11 +34,16 @@ impl Wallet {
         self.balance
     }
 
+    /// Returns the total balance.
+    pub fn total_balance(&self) -> f64 {
+        self.balance + self.unrealized_pnl
+    }
+
     /// Returns the free balance (available for new trades).
     pub fn free_balance(&self) -> Result<f64> {
-        let free_balance = self.balance - self.locked;
+        let free_balance = self.total_balance() - self.locked;
         if free_balance < 0.0 {
-            return Err(Error::NegFreeBalance(self.balance, self.locked));
+            return Err(Error::NegFreeBalance(self.total_balance(), self.locked));
         }
         Ok(free_balance)
     }
@@ -73,18 +81,29 @@ impl Wallet {
             return Err(Error::NegZeroBalance(amount));
         }
         if self.locked - amount < 0.0 {
-            return Err(Error::Msg(format!(
-                "Locked funds {} are insufficient for amount {}",
-                self.locked, amount
-            )));
+            return Err(Error::UnlockBalance(self.locked, amount));
         }
         self.locked -= amount;
         Ok(())
     }
 
+    /// Updates the unrealized P&L.
+    pub(crate) fn set_unrealized_pnl(&mut self, pnl: f64) {
+        self.unrealized_pnl = pnl;
+    }
+
+    /// Subtracts the given amount from the wallet's unrealized P&L.
+    ///
+    /// This function is used when a position's unrealized P&L needs to be adjusted,
+    /// typically when a position is closed and its P&L becomes realized.
+    pub(crate) fn sub_pnl(&mut self, amount: f64) {
+        self.unrealized_pnl -= amount;
+    }
+
     /// Resets the wallet to its initial balance.
     pub(crate) fn reset(&mut self) {
         self.locked = 0.0;
+        self.unrealized_pnl = 0.0;
         self.balance = self.initial_balance;
     }
 }
@@ -113,7 +132,7 @@ fn new_wallet_invalid_balance() {
 fn unlock_funds_invalid() {
     let mut wallet = Wallet::new(100.0).unwrap();
     let result = wallet.unlock(20.0);
-    assert!(matches!(result, Err(Error::Msg(_))));
+    assert!(matches!(result, Err(Error::UnlockBalance(_, _))));
 }
 
 #[cfg(test)]
@@ -233,4 +252,19 @@ fn open_close_loss_position() {
     assert_eq!(wallet.balance, 90.0);
     assert_eq!(wallet.locked, 0.0);
     assert_eq!(wallet.free_balance().unwrap(), 90.0);
+}
+
+#[cfg(test)]
+#[test]
+fn unrealized_pnl() {
+    let mut wallet = Wallet::new(100.0).unwrap();
+    wallet.set_unrealized_pnl(10.0); // unrealized gain
+    assert_eq!(wallet.unrealized_pnl, 10.0);
+    assert_eq!(wallet.total_balance(), 110.0);
+    assert_eq!(wallet.free_balance().unwrap(), 110.0);
+
+    wallet.set_unrealized_pnl(-5.0); // unrealized loss
+    assert_eq!(wallet.unrealized_pnl, -5.0);
+    assert_eq!(wallet.total_balance(), 95.0);
+    assert_eq!(wallet.free_balance().unwrap(), 95.0);
 }
