@@ -1,5 +1,5 @@
 use super::order::{Order, OrderSide};
-use crate::utils::random_id;
+use crate::{errors::*, utils::random_id};
 
 /// Represents the side of a position (long or short).
 #[derive(Debug, Clone)]
@@ -49,11 +49,12 @@ impl std::ops::DerefMut for Position {
 }
 
 impl Position {
-    pub fn estimate_pnl(&self, exit_price: f64) -> f64 {
-        match self.side {
-            PositionSide::Long => (exit_price - self.entry_price()) * self.quantity,
-            PositionSide::Short => (self.entry_price() - exit_price) * self.quantity,
-        }
+    pub fn estimate_pnl(&self, exit_price: f64) -> Result<f64> {
+        let pnl = match self.side {
+            PositionSide::Long => (exit_price - self.entry_price()?) * self.quantity,
+            PositionSide::Short => (self.entry_price()? - exit_price) * self.quantity,
+        };
+        Ok(pnl)
     }
 }
 
@@ -66,10 +67,10 @@ fn create_position_from_buy_order() {
     let order: Order = (OrderType::Market(100.0), 2.0, OrderSide::Buy).into();
     let position = Position::from(order);
 
-    assert_eq!(position.entry_price(), 100.0);
+    assert_eq!(position.entry_price().unwrap(), 100.0);
     assert_eq!(position.quantity, 2.0);
     assert!(matches!(position.side, PositionSide::Long));
-    assert_eq!(position.cost(), 200.0);
+    assert_eq!(position.cost().unwrap(), 200.0);
 }
 
 #[cfg(test)]
@@ -78,10 +79,10 @@ fn create_position_from_sell_order() {
     let order: Order = (OrderType::Limit(150.0), 1.5, OrderSide::Sell).into();
     let position = Position::from(order);
 
-    assert_eq!(position.entry_price(), 150.0);
+    assert_eq!(position.entry_price().unwrap(), 150.0);
     assert_eq!(position.quantity, 1.5);
     assert!(matches!(position.side, PositionSide::Short));
-    assert_eq!(position.cost(), 225.0);
+    assert_eq!(position.cost().unwrap(), 225.0);
 }
 
 #[cfg(test)]
@@ -113,7 +114,7 @@ fn position_deref() {
     let order: Order = (OrderType::Market(100.0), 2.0, OrderSide::Buy).into();
     let position = Position::from(order);
 
-    assert_eq!(position.entry_price(), 100.0);
+    assert_eq!(position.entry_price().unwrap(), 100.0);
     assert_eq!(position.quantity, 2.0);
     assert!(matches!(position.side, PositionSide::Long));
 }
@@ -134,9 +135,9 @@ fn estimate_pnl_long_position() {
     let order: Order = (OrderType::Market(100.0), 2.0, OrderSide::Buy).into();
     let position = Position::from(order);
 
-    assert_eq!(position.estimate_pnl(120.0), 40.0);
-    assert_eq!(position.estimate_pnl(80.0), -40.0);
-    assert_eq!(position.estimate_pnl(100.0), 0.0);
+    assert_eq!(position.estimate_pnl(120.0).unwrap(), 40.0);
+    assert_eq!(position.estimate_pnl(80.0).unwrap(), -40.0);
+    assert_eq!(position.estimate_pnl(100.0).unwrap(), 0.0);
 }
 
 #[cfg(test)]
@@ -145,9 +146,9 @@ fn estimate_pnl_short_position() {
     let order: Order = (OrderType::Market(100.0), 2.0, OrderSide::Sell).into();
     let position = Position::from(order);
 
-    assert_eq!(position.estimate_pnl(80.0), 40.0);
-    assert_eq!(position.estimate_pnl(120.0), -40.0);
-    assert_eq!(position.estimate_pnl(100.0), 0.0);
+    assert_eq!(position.estimate_pnl(80.0).unwrap(), 40.0);
+    assert_eq!(position.estimate_pnl(120.0).unwrap(), -40.0);
+    assert_eq!(position.estimate_pnl(100.0).unwrap(), 0.0);
 }
 
 #[cfg(test)]
@@ -162,7 +163,7 @@ fn position_with_exit_rule() {
         .into();
     let position = Position::from(order);
 
-    assert_eq!(position.entry_price(), 100.0);
+    assert_eq!(position.entry_price().unwrap(), 100.0);
     assert_eq!(position.quantity, 1.5);
     assert!(matches!(position.side, PositionSide::Short));
     assert!(matches!(

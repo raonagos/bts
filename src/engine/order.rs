@@ -1,4 +1,4 @@
-use crate::utils::random_id;
+use crate::{errors::*, utils::random_id};
 
 /// Represents the side of an order (buy or sell).
 #[derive(Debug, Clone)]
@@ -18,10 +18,10 @@ pub enum OrderType {
 
 impl OrderType {
     /// Returns the price associated with the order type (for Market and Limit orders).
-    pub fn inner(&self) -> f64 {
+    pub fn inner(&self) -> Result<f64> {
         match self {
-            Self::Market(price) | Self::Limit(price) => price.to_owned(),
-            _ => unreachable!(),
+            Self::Market(price) | Self::Limit(price) => Ok(*price),
+            _ => Err(Error::MismatchedOrderType),
         }
     }
 }
@@ -70,13 +70,14 @@ impl From<O2> for Order {
 
 impl Order {
     /// Returns the entry price of the order.
-    pub fn entry_price(&self) -> f64 {
+    pub fn entry_price(&self) -> Result<f64> {
         self.entry_type.inner()
     }
 
     /// Returns the total cost of the order (price * quantity).
-    pub(crate) fn cost(&self) -> f64 {
-        self.entry_type.inner() * self.quantity
+    pub(crate) fn cost(&self) -> Result<f64> {
+        let inner = self.entry_type.inner()?;
+        Ok(inner * self.quantity)
     }
 
     /// Returns the entry type of the order.
@@ -116,9 +117,9 @@ fn create_simple_order() {
     let side = OrderSide::Buy;
     let order: Order = (entry_type, quantity, side).into();
 
-    assert_eq!(order.entry_price(), 100.0);
+    assert_eq!(order.entry_price().unwrap(), 100.0);
     assert_eq!(order.quantity, 2.0);
-    assert_eq!(order.cost(), 200.0);
+    assert_eq!(order.cost().unwrap(), 200.0);
     assert!(matches!(order.side, OrderSide::Buy));
     assert!(order.exit_rule().is_none());
 }
@@ -132,9 +133,9 @@ fn create_order_with_exit_rule() {
     let side = OrderSide::Sell;
     let order: Order = (entry_type, exit_type, quantity, side).into();
 
-    assert_eq!(order.entry_price(), 100.0);
+    assert_eq!(order.entry_price().unwrap(), 100.0);
     assert_eq!(order.quantity, 1.5);
-    assert_eq!(order.cost(), 150.0);
+    assert_eq!(order.cost().unwrap(), 150.0);
     assert!(matches!(order.side, OrderSide::Sell));
     assert!(matches!(
         order.exit_rule(),
@@ -155,20 +156,20 @@ fn order_equality() {
 #[test]
 fn entry_price() {
     let market_order: Order = (OrderType::Market(100.0), 1.0, OrderSide::Buy).into();
-    assert_eq!(market_order.entry_price(), 100.0);
+    assert_eq!(market_order.entry_price().unwrap(), 100.0);
 
     let limit_order: Order = (OrderType::Limit(150.0), 1.0, OrderSide::Sell).into();
-    assert_eq!(limit_order.entry_price(), 150.0);
+    assert_eq!(limit_order.entry_price().unwrap(), 150.0);
 }
 
 #[cfg(test)]
 #[test]
 fn order_cost() {
     let order: Order = (OrderType::Market(100.0), 2.5, OrderSide::Buy).into();
-    assert_eq!(order.cost(), 250.0);
+    assert_eq!(order.cost().unwrap(), 250.0);
 
     let order: Order = (OrderType::Limit(200.0), 0.5, OrderSide::Sell).into();
-    assert_eq!(order.cost(), 100.0);
+    assert_eq!(order.cost().unwrap(), 100.0);
 }
 
 #[cfg(test)]
@@ -235,10 +236,10 @@ fn set_trailingstop_no_exit_rule() {
 #[test]
 fn order_type_inner() {
     let market_order = OrderType::Market(100.0);
-    assert_eq!(market_order.inner(), 100.0);
+    assert_eq!(market_order.inner().unwrap(), 100.0);
 
     let limit_order = OrderType::Limit(150.0);
-    assert_eq!(limit_order.inner(), 150.0);
+    assert_eq!(limit_order.inner().unwrap(), 150.0);
 }
 
 #[cfg(test)]
@@ -246,5 +247,5 @@ fn order_type_inner() {
 #[should_panic]
 fn order_type_inner_panics() {
     let take_profit_order = OrderType::TakeProfitAndStopLoss(120.0, 90.0);
-    take_profit_order.inner();
+    take_profit_order.inner().unwrap();
 }

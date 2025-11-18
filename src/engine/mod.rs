@@ -4,7 +4,7 @@ mod position;
 mod wallet;
 
 #[cfg(test)]
-mod bt;
+mod bts;
 
 use std::collections::{VecDeque, vec_deque::Iter};
 
@@ -102,7 +102,7 @@ impl Backtest {
     /// ### Returns
     /// Ok if successful, or an error.
     pub fn place_order(&mut self, order: Order) -> Result<()> {
-        self.wallet.lock(order.cost())?;
+        self.wallet.lock(order.cost()?)?;
         self.orders.push_back(order.clone());
         self.events.push(Event::AddOrder(order));
         Ok(())
@@ -122,14 +122,14 @@ impl Backtest {
             .position(|o| o == order)
             .ok_or(Error::OrderNotFound)?;
         let order = self.orders.remove(order_idx).ok_or(Error::RemoveOrder)?;
-        self.wallet.unlock(order.cost())?;
+        self.wallet.unlock(order.cost()?)?;
         self.events.push(Event::DelOrder(order));
         Ok(())
     }
 
     /// Opens a new position.
     fn open_position(&mut self, position: Position) -> Result<()> {
-        self.wallet.sub(position.cost())?;
+        self.wallet.sub(position.cost()?)?;
         self.positions.push_back(position.clone());
         self.events.push(Event::AddPosition(position));
         Ok(())
@@ -157,8 +157,8 @@ impl Backtest {
             self.positions.remove(pos_idx).ok_or(Error::RemovePosition)?;
         }
         // Calculate profit/loss and update wallet
-        let pnl = position.estimate_pnl(exit_price);
-        let total_amount = pnl + position.cost();
+        let pnl = position.estimate_pnl(exit_price)?;
+        let total_amount = pnl + position.cost()?;
         self.wallet.add(total_amount)?;
         self.wallet.sub_pnl(total_amount);
         self.events.push(Event::DelPosition(position.clone()));
@@ -183,7 +183,7 @@ impl Backtest {
     fn execute_orders(&mut self, candle: &Candle) -> Result<()> {
         let mut orders = VecDeque::with_capacity(self.orders.len());
         while let Some(order) = self.orders.pop_front() {
-            let price = order.entry_price();
+            let price = order.entry_price()?;
             if price >= candle.low() && price <= candle.high() {
                 self.open_position(Position::from(order))?;
             } else {
@@ -197,14 +197,8 @@ impl Backtest {
     /// Executes position management (take-profit, stop-loss, trailing stop).
     fn execute_positions(&mut self, candle: &Candle) -> Result<()> {
         let mut positions = VecDeque::with_capacity(self.positions.len());
-        let mut total_unrealized_pnl = 0.0;
 
         while let Some(mut position) = self.positions.pop_front() {
-            // calculate unrealized P&L for this position
-            let current_price = candle.close();
-            let pnl = position.estimate_pnl(current_price);
-            total_unrealized_pnl += pnl;
-
             let should_close = match position.exit_rule() {
                 Some(OrderType::TakeProfitAndStopLoss(take_profit, stop_loss)) => {
                     if *take_profit < 0.0 || *stop_loss < 0.0 {
@@ -240,23 +234,23 @@ impl Backtest {
                     match position.side {
                         PositionSide::Long => {
                             let execute_price = price.subpercent(*percent);
-                            if &candle.high() > price {
-                                position.set_trailingstop(candle.high());
-                            }
-                            if execute_price > 0.0 && execute_price >= candle.low() {
+                            if execute_price >= candle.low() {
                                 Some(execute_price)
                             } else {
+                                if &candle.high() > price {
+                                    position.set_trailingstop(candle.high());
+                                }
                                 None
                             }
                         }
                         PositionSide::Short => {
                             let execute_price = price.addpercent(*percent);
-                            if &candle.low() < price {
-                                position.set_trailingstop(candle.low());
-                            }
-                            if execute_price > 0.0 && execute_price <= candle.high() {
+                            if execute_price <= candle.high() {
                                 Some(execute_price)
                             } else {
+                                if &candle.low() < price {
+                                    position.set_trailingstop(candle.low());
+                                }
                                 None
                             }
                         }
@@ -274,6 +268,14 @@ impl Backtest {
                 }
                 None => positions.push_back(position),
             }
+        }
+
+        let mut total_unrealized_pnl = 0.0;
+        for position in &positions {
+            // calculate unrealized P&L for this position
+            let current_price = candle.close();
+            let pnl = position.estimate_pnl(current_price)?;
+            total_unrealized_pnl += pnl;
         }
 
         self.positions.append(&mut positions);
