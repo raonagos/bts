@@ -45,8 +45,8 @@ pub struct Backtest {
     data: Vec<Candle>,
     events: Vec<Event>,
     orders: VecDeque<Order>,
-    market_fees: Option<f64>,
     positions: VecDeque<Position>,
+    market_fees: Option<(f64, f64)>,
 }
 
 impl std::ops::Deref for Backtest {
@@ -63,7 +63,7 @@ impl Backtest {
     /// ### Arguments
     /// * `data` - Vector of candle data.
     /// * `initial_balance` - Initial wallet balance.
-    /// * `market_fee` - Market fee percentage (e.g., 0.1 for 0.1%).
+    /// * `market_fee` - Market *(market and limit)* fee percentage (e.g., 0.1 for 0.1%).
     ///   Fees are **only applied when positions are opened**, not when orders are placed.
     ///
     /// ### Market Fees Behavior
@@ -75,19 +75,25 @@ impl Backtest {
     ///
     /// ### Returns
     /// The new backtest instance or an error.
-    pub fn new(data: Vec<Candle>, initial_balance: f64, market_fees: Option<f64>) -> Result<Self> {
+    pub fn new(data: Vec<Candle>, initial_balance: f64, market_fees: Option<(f64, f64)>) -> Result<Self> {
         if data.is_empty() {
             return Err(Error::CandleDataEmpty);
+        }
+
+        if let Some((market_fee, limit_fee)) = market_fees {
+            if market_fee <= 0.0 || limit_fee <= 0.0 {
+                return Err(Error::NegZeroFees);
+            }
         }
 
         Ok(Self {
             data,
             index: 0,
+            market_fees,
             events: Vec::new(),
             orders: VecDeque::new(),
             positions: VecDeque::new(),
             wallet: Wallet::new(initial_balance)?,
-            market_fees,
         })
     }
 
@@ -144,8 +150,12 @@ impl Backtest {
     /// Opens a new position.
     fn open_position(&mut self, position: Position) -> Result<()> {
         self.wallet.sub(position.cost()?)?;
-        if let Some(fee) = self.market_fees {
-            self.wallet.sub_fees(position.cost()? * fee)?;
+        if let Some((market_fee, limit_fee)) = self.market_fees {
+            if position.is_market_type() {
+                self.wallet.sub_fees(position.cost()? * market_fee)?;
+            } else {
+                self.wallet.sub_fees(position.cost()? * limit_fee)?;
+            };
         }
         self.positions.push_back(position.clone());
         self.events.push(Event::AddPosition(position));

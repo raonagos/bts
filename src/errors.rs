@@ -36,6 +36,10 @@ pub enum Error {
     #[error("Negative free balance: balance={0}, locked={1}")]
     NegFreeBalance(f64, f64),
 
+    /// The fees are negative.
+    #[error("Negative fees")]
+    NegZeroFees,
+
     /// The locked funds are insufficient for the requested amount.
     ///
     /// ### Arguments

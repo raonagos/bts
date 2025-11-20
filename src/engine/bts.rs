@@ -25,7 +25,7 @@ fn scenario_place_and_delete_order_with_market_fees() {
     let data = get_data();
     let balance = 1000.0;
     let market_fee = 0.1; // 0.1%
-    let mut bt = Backtest::new(data, balance, Some(market_fee)).unwrap();
+    let mut bt = Backtest::new(data, balance, Some((market_fee, 0.01))).unwrap();
     let candle = bt.next().unwrap();
     let price = candle.close(); // 110
 
@@ -52,7 +52,7 @@ fn scenario_place_and_delete_order_with_market_fees() {
         let data = get_long_data();
         let balance = 1000.0;
         let market_fee = 0.1; // 0.1%
-        let mut bt = Backtest::new(data, balance, Some(market_fee)).unwrap();
+        let mut bt = Backtest::new(data, balance, Some((market_fee, 0.01))).unwrap();
 
         let candle = bt.next().unwrap();
         let price = candle.close(); // 100
@@ -89,7 +89,7 @@ fn scenario_open_position_with_market_fees() {
     let data = get_long_data();
     let balance = 1000.0;
     let market_fee = 0.1; // 0.1%
-    let mut bt = Backtest::new(data, balance, Some(market_fee)).unwrap();
+    let mut bt = Backtest::new(data, balance, Some((market_fee, 0.01))).unwrap();
 
     let candle = bt.next().unwrap();
     let price = candle.close(); // 100
