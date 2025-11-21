@@ -3,7 +3,7 @@
 //! This example implements a simplified version of the famous **Turtle Trading Strategy**
 //! developed by Richard Dennis, which uses trend-following techniques with strict risk management.
 
-mod data;
+mod utils;
 
 use bts::prelude::*;
 use ta::{
@@ -14,7 +14,7 @@ use ta::{
 };
 
 fn main() -> anyhow::Result<()> {
-    let candles = data::generate_sample_candles(0..3000, 42, 100.0);
+    let candles = utils::generate_sample_candles(0..3000, 42, 100.0);
     let initial_balance = 1_000.0;
     let mut bt = Backtest::new(candles.clone(), initial_balance, None)?;
     let mut ema = ExponentialMovingAverage::new(100)?;

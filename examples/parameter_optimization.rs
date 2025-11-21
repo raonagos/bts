@@ -21,7 +21,7 @@
 //!    - Top performing periods (successful backtests)
 //!    - Error cases (failed backtests)
 
-mod data;
+mod utils;
 
 use std::cmp::Ordering;
 
@@ -29,7 +29,7 @@ use bts::prelude::*;
 use ta::{indicators::ExponentialMovingAverage, *};
 
 fn main() -> anyhow::Result<()> {
-    let candles = data::generate_sample_candles(0..3000, 42, 100.0);
+    let candles = utils::generate_sample_candles(0..3000, 42, 100.0);
     let initial_balance = 1_000.0;
     let mut bt = Backtest::new(candles.clone(), initial_balance, None)?;
 

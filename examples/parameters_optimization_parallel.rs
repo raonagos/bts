@@ -3,7 +3,6 @@
 //! This module implements a **parallel brute-force optimization** to find optimal
 //! EMA and MACD parameters for trading strategies using multi-threading.
 
-mod data;
 mod utils;
 
 use bts::prelude::*;
@@ -15,12 +14,44 @@ use utils::*;
 const START: usize = 8;
 const END: usize = 13;
 
+#[derive(Debug, PartialEq)]
+struct Parameters(usize, (usize, usize, usize), f64);
+
+impl From<(usize, (usize, usize, usize), f64)> for Parameters {
+    fn from(value: (usize, (usize, usize, usize), f64)) -> Self {
+        Self(value.0, value.1, value.2)
+    }
+}
+
+impl PartialOrd for Parameters {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.2.partial_cmp(&other.2)
+    }
+}
+
+impl std::fmt::Display for Parameters {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let ema = self.0;
+        let m1 = self.1.0;
+        let m2 = self.1.1;
+        let m3 = self.1.2;
+        let b = self.2;
+        write!(f, "EMA: {ema:3}, MACD: ({m1:3}, {m2:3}, {m3:3}) | Balance: ${b:.2}")
+    }
+}
+
+impl Parameters {
+    fn balance(&self) -> f64 {
+        self.2
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     if START > END {
         return Err(anyhow::Error::msg("END must be greater than START"));
     }
 
-    let candles = data::generate_sample_candles(0..3000, 42, 100.0);
+    let candles = utils::generate_sample_candles(0..3000, 42, 100.0);
     let initial_balance = 1_000.0;
     let min = START;
     let max = END;
@@ -72,11 +103,11 @@ fn main() -> anyhow::Result<()> {
             });
 
             let current_balance = bt.total_balance();
-            let periods = (ema_period, (macd1, macd2, macd3));
+            let parameters = Parameters::from((ema_period, (macd1, macd2, macd3), current_balance));
 
             match result {
-                Ok(_) => shared.push_result((periods, current_balance), false),
-                Err(_) => shared.push_result((periods, current_balance), true),
+                Ok(_) => shared.push_result(parameters, false),
+                Err(_) => shared.push_result(parameters, true),
             }
 
             bt.reset();
@@ -84,16 +115,16 @@ fn main() -> anyhow::Result<()> {
     });
 
     println!("\n\nPARAMETERS: MIN {START}, MAX {END}, NB TICKS {}", candles.len());
-    println!("\n=== TOP {} EMA PERIODS ===", utils::CAPACITY);
-    for ((ema, (m1, m2, m3)), b) in shared.total_balances().lock().unwrap().iter() {
-        let opt = (b - initial_balance) / initial_balance * 100.0;
-        println!("EMA: {ema:3}, MACD: ({m1:3}, {m2:3}, {m3:3}) | Balance: ${b:.2} ({opt:+.2}%)");
+    println!("\n=== TOP {} EMA/MACD Parameters ===", utils::CAPACITY);
+    for p in shared.total_balances().lock().unwrap().iter() {
+        let opt = (p.balance() - initial_balance) / initial_balance * 100.0;
+        println!("{p} ({opt:+.2}%)");
     }
 
     println!("\n=== ERROR CASES (TOP {}) ===", utils::CAPACITY);
-    for ((ema, (m1, m2, m3)), b) in shared.errors().lock().unwrap().iter() {
-        let opt = (b - initial_balance) / initial_balance * 100.0;
-        println!("EMA: {ema:3}, MACD: ({m1:3}, {m2:3}, {m3:3}) | Balance: ${b:.2} ({opt:+.2}%)");
+    for p in shared.errors().lock().unwrap().iter() {
+        let opt = (p.balance() - initial_balance) / initial_balance * 100.0;
+        println!("{p} ({opt:+.2}%)");
     }
 
     Ok(())

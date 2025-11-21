@@ -38,9 +38,9 @@ name = "tpsl"
 path = "examples/take_profit_and_stop_loss.rs"
 
 [[example]]
-name = "emaopt"
-path = "examples/ema_parameter_optimization.rs"
+name = "popt"
+path = "examples/parameter_optimization.rs"
 
 [[example]]
-name = "emacdopt"
-path = "examples/ema_macd_parameter_optimization_par.rs"
+name = "pp"
+path = "examples/parameters_optimization_parallel.rs"

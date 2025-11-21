@@ -9,7 +9,7 @@
 - [x] Add `Candle` builder for validation
 
 ## 📌 In Progress
-- [ ] Create `Report` struct to wrap metrics (P&L, drawdown, Sharpe)
+- [ ] Add `Report` struct to wrap metrics (P&L, drawdown, Sharpe)
 - [ ] Add methods to modify orders/positions (update SL/TP/trailing stop)
 
 ## 🚀 Road to v1.0.0
