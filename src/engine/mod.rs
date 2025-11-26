@@ -426,20 +426,20 @@ impl Backtest {
         A: Aggregation,
         F: FnMut(&mut Self, Vec<&Candle>) -> Result<()>,
     {
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
 
         let factors = aggregator.factors();
         if factors.is_empty() {
             return Err(Error::InvalidFactor);
         }
 
-        let mut current_candles = HashMap::new();
-        let mut aggregated_candles_map = HashMap::new();
+        let mut current_candles = BTreeMap::new();
+        let mut aggregated_candles_map = BTreeMap::new();
 
         // Initialize the map with empty queues for each factor
         for &factor in factors {
             current_candles.insert(factor, VecDeque::with_capacity(factor));
-            aggregated_candles_map.insert(factor, VecDeque::with_capacity(factor));
+            aggregated_candles_map.insert(factor, VecDeque::with_capacity(1));
         }
 
         let data = self.data.clone(); //todo avoid clone
@@ -451,12 +451,12 @@ impl Backtest {
             for (factor, agg) in aggregated_candles_map.iter_mut() {
                 let deque = current_candles.get_mut(factor).expect("should contains candles");
                 let zero = deque.make_contiguous();
+                let candle = aggregator.aggregate(zero)?;
                 if aggregator.should_aggregate(*factor, zero) {
-                    let candle = aggregator.aggregate(zero)?;
-                    agg.pop_front();
                     deque.pop_front();
-                    agg.push_back(candle);
                 }
+                agg.pop_front();
+                agg.push_back(candle);
             }
 
             let agg_candles = aggregated_candles_map.values().flatten().collect::<Vec<_>>();

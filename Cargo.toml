@@ -1,6 +1,6 @@
 [package]
 name = "bts"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2024"
 description = "Backtest your trading strategy."
 authors = ["tetuaoro <65575727+tetuaoro@users.noreply.github.com>"]

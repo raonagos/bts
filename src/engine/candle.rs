@@ -10,6 +10,7 @@ use crate::errors::{Error, Result};
 /// over a specific time period. It includes the opening price, highest price, lowest price,
 /// closing price, trading volume, and bid/ask spread information.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(test, derive(PartialEq))]
 #[derive(Debug, Clone)]
 pub struct Candle {
     open: f64,

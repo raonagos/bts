@@ -598,28 +598,25 @@ impl Aggregation for TestAggregator {
 
 #[test]
 fn scenario_with_aggregator() {
-    let data = get_long_data_trailing_stop_loss();
+    let data = get_short_data();
     let mut bt = Backtest::new(data, 1.0, None).unwrap();
 
     let mut ic = 0;
-    let mut captures_ic = vec![];
     let aggregator = TestAggregator;
     bt.run_with_aggregator(&aggregator, |_, candles| {
-        // factors = &[1, 2]
+        let candle_one = candles.get(0);
+        let candle_two = candles.get(1);
 
-        if let Some(_candle_one) = candles.get(0) {
-            captures_ic.push(ic);
+        assert!(candle_one.is_some());
+        assert!(candle_two.is_some());
+
+        if ic > 0 {
+            assert_ne!(candle_one, candle_two);
         }
-        if let Some(_candle_two) = candles.get(1) {
-            captures_ic.push(ic);
-        }
+
         ic += 1;
 
         Ok(())
     })
     .unwrap();
-
-    // iteration 0 => captures_ic = [0]
-    // iteration 1 => captures_ic = [0, 1, 1] because `candles.get(1)` is some
-    assert_eq!(captures_ic, vec![0, 1, 1]);
 }

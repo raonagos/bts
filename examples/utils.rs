@@ -120,4 +120,14 @@ pub fn print_metrics(metrics: &Metrics, initial_balance: f64) {
     println!("Win Rate: {:.2}%", metrics.win_rate());
 }
 
+#[macro_export]
+/// Pause and resume when press any key.
+macro_rules! pause {
+    () => {
+        println!("[{}:{}] Pausing! Press enter to continue...", file!(), line!());
+        let mut buffer = String::new();
+        std::io::stdin().read_line(&mut buffer).expect("Failed to read line");
+    };
+}
+
 fn main() {}

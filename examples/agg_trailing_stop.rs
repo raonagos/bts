@@ -31,9 +31,8 @@ fn main() -> anyhow::Result<()> {
     let aggregator = TimeframeAggregator;
     bt.run_with_aggregator(&aggregator, |bt, candles| {
         let candle_one = candles.get(0).expect("hō'e");
-
-        if let Some(_candle_four_agg) = candles.get(1) {}
-        if let Some(_candle_eight_agg) = candles.get(2) {}
+        let _candle_four = candles.get(1).expect("hō'e");
+        let _candle_eight = candles.get(2).expect("hō'e");
 
         let close = candle_one.close();
         let output = ema.next(close);
