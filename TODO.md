@@ -10,7 +10,6 @@
 - [x] Add `Metrics` struct to wrap metrics (P&L, drawdown, Sharpe)
 - [x] Timeframe/Volume aggregation (1H → 4H/8H/1D or 1D → 7D/1M)
 - [x] Parameters optimization
-- [x] Genetic parameter optimization
 - [x] Strategy examples (5+ templates)
 - [x] WASM compilation support
 
