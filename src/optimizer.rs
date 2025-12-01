@@ -31,6 +31,7 @@ pub trait ParameterCombination {
 ///
 /// This struct handles the execution of backtests for each parameter combination,
 /// collecting results for analysis.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Optimizer<PS: ParameterCombination> {
     data: Vec<Candle>,
     initial_balance: f64,
@@ -109,4 +110,108 @@ impl<PS: ParameterCombination> Optimizer<PS> {
 
         Ok(results)
     }
+}
+
+#[cfg(test)]
+#[derive(Clone)]
+struct Parameters;
+
+#[cfg(test)]
+impl ParameterCombination for Parameters {
+    type T = (usize, usize, usize, usize);
+
+    fn generate() -> Vec<Self::T> {
+        let min = 8;
+        let max = 13;
+        (min..=max)
+            .flat_map(|macd1| {
+                (min..=max).flat_map(move |macd2| {
+                    (min..=max).flat_map(move |macd3| (min..=max).map(move |ema| (ema, macd1, macd2, macd3)))
+                })
+            })
+            .collect()
+    }
+}
+
+#[cfg(test)]
+fn get_data() -> Vec<Candle> {
+    use super::engine::CandleBuilder;
+    use chrono::DateTime;
+
+    let candle1 = CandleBuilder::builder()
+        .open(90.0)
+        .high(110.0)
+        .low(80.0)
+        .close(100.0)
+        .volume(1.0)
+        .open_time(DateTime::from_timestamp_secs(1515151515).unwrap())
+        .close_time(DateTime::from_timestamp_secs(1515151516).unwrap())
+        .build()
+        .unwrap();
+    let candle2 = CandleBuilder::builder()
+        .open(100.0)
+        .high(119.0)
+        .low(90.0)
+        .close(110.0)
+        .volume(1.0)
+        .open_time(DateTime::from_timestamp_secs(1515151515).unwrap())
+        .close_time(DateTime::from_timestamp_secs(1515151516).unwrap())
+        .build()
+        .unwrap();
+    let candle3 = CandleBuilder::builder()
+        .open(110.0)
+        .high(129.0)
+        .low(100.0)
+        .close(120.0)
+        .volume(1.0)
+        .open_time(DateTime::from_timestamp_secs(1515151515).unwrap())
+        .close_time(DateTime::from_timestamp_secs(1515151516).unwrap())
+        .build()
+        .unwrap();
+
+    vec![candle1, candle2, candle3]
+}
+
+#[cfg(test)]
+#[test]
+fn optimizer_with_ema_macd() {
+    use crate::prelude::*;
+    use ta::*;
+    use ta::indicators::{
+        ExponentialMovingAverage, MovingAverageConvergenceDivergence, MovingAverageConvergenceDivergenceOutput,
+    };
+
+    let candles = get_data();
+    let initial_balance = 1_000.0;
+
+    let opt = Optimizer::<Parameters>::new(candles.clone(), initial_balance, None);
+
+    let result = opt.with(
+        |&(ema_period, m1, m2, m3)| {
+            let ema = ExponentialMovingAverage::new(ema_period).map_err(|e| Error::Msg(e.to_string()))?;
+            let macd = MovingAverageConvergenceDivergence::new(m1, m2, m3).map_err(|e| Error::Msg(e.to_string()))?;
+            Ok((ema, macd))
+        },
+        |bt, (ema, macd), candle| {
+            let close = candle.close();
+            let output = ema.next(close);
+            let MovingAverageConvergenceDivergenceOutput { histogram, .. } = macd.next(close);
+            let balance = bt.free_balance()?;
+            let amount = balance.how_many(2.0).max(21.0);
+
+            if balance > (initial_balance / 2.0) && close > output && histogram > 0.0 {
+                let quantity = amount / close;
+                let order = (
+                    OrderType::Market(close),
+                    OrderType::TrailingStop(close, 2.0),
+                    quantity,
+                    OrderSide::Buy,
+                );
+                bt.place_order(order.into())?;
+            }
+            Ok(())
+        },
+    ).unwrap();
+
+    assert!(!result.is_empty(), "No optimization results returned");
 }

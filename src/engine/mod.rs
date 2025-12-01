@@ -83,6 +83,7 @@ pub trait Aggregation {
 }
 
 /// Backtesting engine for trading strategies.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug)]
 pub struct Backtest {
     index: usize,

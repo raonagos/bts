@@ -30,9 +30,6 @@
  Represents an open market position with exit rules (take-profit, stop-loss, trailing stop).
  Positions are managed by the backtesting engine.
 
- ### **Wallet**
- Manages the account balance, locked funds for orders, and profits/losses.
-
  ### **Event**
  Records backtest events (order/position additions/removals) for detailed tracking.
 
@@ -48,10 +45,10 @@
  ];
 
  // Initialize backtest
- let mut bt = Backtest::new(data, 1000.0).unwrap();
+ let mut bts = Backtest::new(data, 1000.0).unwrap();
 
  // Custom strategy
- bt.run(|bt, candle| {
+ bts.run(|bt, candle| {
      // Example: Buy if closing price > opening price
      if candle.close() > candle.open() {
          let order = Order::from((OrderType::Market(candle.close()), 1.0, OrderSide::Buy));
@@ -61,12 +58,12 @@
  }).unwrap();
 
  // Results
- println!("Final balance: {}", bt.balance());
- println!("Number of positions: {}", bt.positions().count());
- println!("Number of events: {}", bt.events().count());
+ println!("Final balance: {}", bts.balance());
+ println!("Number of positions: {}", bts.positions().count());
+ println!("Number of events: {}", bts.events().count());
  ```
 
- ## **Performance Metrics (soon)**
+ ## **Performance Metrics**
 
  The backtesting engine automatically calculates the following metrics:
  - **Profit & Loss (P&L)**: Total profits or losses.
@@ -81,10 +78,11 @@
 
  ## **Advanced Features**
 
- - **Custom Strategies**: Implement your own trading logic using the `run` method.
+ - **Custom Strategies**: Implement your own trading logic.
  - **Event Tracking**: Detailed logging of all trading events.
  - **Risk Management**: Built-in support for stop-loss and take-profit rules.
- - **Performance Optimization**: Uses efficient data structures like `VecDeque` for order/position management.
+ - **Performance Optimization**: Uses efficient data structures for order/position management.
+ - **Parameters Optimization**: Computes the best parameters *(indicators, RR, etc...)* for your strategy.
 
  ## **Error Handling**
 
@@ -100,14 +98,18 @@
 
  ```toml
  [dependencies]
- bts = "0.5"
+ bts = "0.7"
  ```
 
  Then import and use it in your project:
 
  ```rust
- use bts::Backtest;
+ use bts::prelude::*;
  ```
+
+ ## Contributing
+
+ See [Contributing](CONTRIBUTING.md) file to contribute to this project.
 
  ## **License**
 

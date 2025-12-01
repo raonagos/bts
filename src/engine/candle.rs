@@ -1,15 +1,13 @@
-use chrono::{DateTime, Utc};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::errors::{Error, Result};
+
+use chrono::{DateTime, Utc};
 
 /// Represents a financial candle (or candlestick) with open, high, low, close, volume, and bid/ask data.
 ///
 /// A candle is a fundamental data structure in financial markets, representing price movements
 /// over a specific time period. It includes the opening price, highest price, lowest price,
 /// closing price, trading volume, and bid/ask spread information.
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(test, derive(PartialEq))]
 #[derive(Debug, Clone)]
 pub struct Candle {

@@ -1,11 +1,8 @@
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use super::order::{Order, OrderSide};
 use crate::{errors::*, utils::random_id};
 
 /// Represents the side of a position (long or short).
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub enum PositionSide {
     /// A long position, where the trader buys an asset with the expectation that its price will increase.
@@ -15,7 +12,7 @@ pub enum PositionSide {
 }
 
 /// Represents a trading position with an associated order.
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub struct Position {
     id: u32,

@@ -21,6 +21,7 @@ use crate::engine::*;
 /// - Adding or removing orders/positions.
 /// - Updating the wallet balance.
 /// - Charging fees.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Event {
     /// An order has been added to the backtest.

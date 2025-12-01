@@ -1,6 +1,6 @@
 [package]
 name = "bts"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2024"
 description = "Backtest your trading strategy."
 authors = ["tetuaoro <65575727+tetuaoro@users.noreply.github.com>"]
@@ -17,10 +17,14 @@ rayon = { version = "1.11.0", optional = true }
 num_cpus = { version = "1.17.0", optional = true }
 serde = { version = "1.0.226", features = ["derive"], optional = true }
 
+[target.wasm32-unknown-unknown.dependencies]
+getrandom = { version = "0.3.4", features = ["wasm_js"] }
+rayon = { version = "1.11.0", features = ["web_spin_lock"] }
+
 # also update the doc feature below
 [features]
 metrics = []
-optimizer = ["rayon", "num_cpus"]
+optimizer = ["dep:rayon", "dep:num_cpus"]
 serde = ["chrono/serde", "dep:serde"]
 
 [dev-dependencies]

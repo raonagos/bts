@@ -1,10 +1,7 @@
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::errors::{Error, Result};
 
 /// Represents a trading wallet with balance and locked funds management.
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug)]
 pub struct Wallet {
     // Initial balance used for reset

@@ -1,10 +1,7 @@
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::{errors::*, utils::random_id};
 
 /// Represents the side of an order (buy or sell).
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub enum OrderSide {
     /// A buy order, where the trader wants to purchase an asset.
@@ -22,7 +19,7 @@ pub enum OrderSide {
 ///
 /// This separation ensures clarity between order types used to open positions
 /// and rules used to automatically close them.
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub enum OrderType {
     /// Market order to open a position immediately at the current price.
@@ -69,7 +66,7 @@ impl OrderType {
 }
 
 /// Represents an order with entry and exit rules.
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub struct Order {
     id: u32,

@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Custom error types for the `bts` library.
+//#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     /// The candle data provided is empty.
@@ -124,4 +125,26 @@ pub enum Error {
     /// A mutex was poisoned.
     #[error("{0}")]
     MutexPoisoned(String),
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Error {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_ref())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Error {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        //todo implements others fields
+        Ok(Error::Msg(s))
+    }
 }

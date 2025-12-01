@@ -4,7 +4,7 @@
 //! It is designed for **speed, flexibility, and accuracy**, making it ideal for both **retail traders** and **algorithmic trading developers**.
 //!
 //! ## Why BTS?
-//! - **Optimized for Performance**: Uses `VecDeque` for O(1) operations on orders/positions, and parallel processing for optimization tasks.
+//! - **Optimized for Performance**: Uses O(1) operations on orders/positions, and parallel processing for optimization tasks.
 //! - **Technical Analysis Ready**: Seamlessly integrates with the [`ta`](https://crates.io/crates/ta) crate for 100+ indicators (EMA, MACD, RSI, etc.).
 //! - **Risk Management**: Supports stop-loss, take-profit, and trailing stops with configurable rules.
 //! - **Realistic Simulations**: Models slippage, fees, and latency for accurate backtesting.
@@ -18,11 +18,11 @@
 //! | **`Position`** | Open trades with configurable exit rules (e.g., trailing stops).                              |
 //! | **`Wallet`** | Tracks balance, locked funds, unrealized P&L, and fees.                                       |
 //! | **`Metrics`** | Calculates performance metrics: P&L, drawdown, Sharpe ratio, win rate, and more.             |
+//! | **`Optimizer`** | Calculates bests parameters *(indicators, RR, etc...)*.             |
 //! | **`Backtest`** | The engine that simulates strategy execution over historical data.                          |
 //!
 //! ## Features
 //! ### 1. **Technical Indicators**
-//! - Built-in support for **Volume Profile**, **Impulse MACD**, and **custom indicators**.
 //! - Compatible with the [`ta`](https://crates.io/crates/ta) crate for 100+ additional indicators.
 //!
 //! ### 2. **Order Types & Exit Rules**
@@ -52,7 +52,7 @@
 //! ```toml
 //! [dependencies]
 //! bts = "*"
-//! ta = "0.5"  # Optional: For technical analysis indicators
+//! ta = "*"  # Optional: For technical analysis indicators
 //! ```
 //!
 //! ### 2. Run a Simple Backtest:
